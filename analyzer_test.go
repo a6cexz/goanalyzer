@@ -9,11 +9,10 @@ import (
 	"reflect"
 	"testing"
 
-	"golang.org/x/tools/go/ast/astutil"
-
 	"github.com/a6cexz/goanalyzer/diag/text"
 	"github.com/a6cexz/goanalyzer/diag/text/helpers"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 type astVisitor func(ast.Node) bool
