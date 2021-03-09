@@ -344,10 +344,103 @@ func loadElements(parent Node, node ast.Node) []Element {
 		elmts = appendElement(elmts, parent, n.Value)
 		return elmts
 
+	case *ast.ArrayType:
+		elmts = appendLBrackToken(elmts, parent, n.Lbrack)
+		elmts = appendElement(elmts, parent, n.Len)
+		elmts = appendElement(elmts, parent, n.Elt)
+		return elmts
+
+	case *ast.StructType:
+		elmts = appendToken(elmts, parent, n.Struct, "struct", token.STRUCT)
+		elmts = appendElement(elmts, parent, n.Fields)
+		return elmts
+
 	case *ast.FuncType:
 		elmts = appendToken(elmts, parent, n.Func, "func", token.FUNC)
 		elmts = appendElement(elmts, parent, n.Params)
 		elmts = appendElement(elmts, parent, n.Results)
+		return elmts
+
+	case *ast.InterfaceType:
+		elmts = appendToken(elmts, parent, n.Interface, "interface", token.INTERFACE)
+		elmts = appendElement(elmts, parent, n.Methods)
+		return elmts
+
+	case *ast.MapType:
+		elmts = appendToken(elmts, parent, n.Map, "map", token.MAP)
+		elmts = appendElement(elmts, parent, n.Key)
+		elmts = appendElement(elmts, parent, n.Value)
+		return elmts
+
+	case *ast.ChanType:
+		if n.Begin != n.Arrow {
+			elmts = appendToken(elmts, parent, n.Begin, "chan", token.CHAN)
+			elmts = appendToken(elmts, parent, n.Arrow, "<-", token.ARROW)
+		} else {
+			elmts = appendToken(elmts, parent, n.Arrow, "<-", token.ARROW)
+		}
+		elmts = appendElement(elmts, parent, n.Value)
+		return elmts
+
+	case *ast.BadStmt:
+		return nil
+
+	case *ast.DeclStmt:
+		elmts = appendElement(elmts, parent, n.Decl)
+		return elmts
+
+	case *ast.EmptyStmt:
+		if !n.Implicit {
+			elmts = appendToken(elmts, parent, n.Semicolon, ";", token.SEMICOLON)
+			return elmts
+		}
+		return nil
+
+	case *ast.LabeledStmt:
+		elmts = appendElement(elmts, parent, n.Label)
+		elmts = appendToken(elmts, parent, n.Colon, ":", token.COLON)
+		elmts = appendElement(elmts, parent, n.Stmt)
+		return elmts
+
+	case *ast.ExprStmt:
+		elmts = appendElement(elmts, parent, n.X)
+		return elmts
+
+	case *ast.SendStmt:
+		elmts = appendElement(elmts, parent, n.Chan)
+		elmts = appendToken(elmts, parent, n.Arrow, "<-", token.ARROW)
+		elmts = appendElement(elmts, parent, n.Value)
+		return elmts
+
+	case *ast.IncDecStmt:
+		elmts = appendElement(elmts, parent, n.X)
+		elmts = appendToken(elmts, parent, n.TokPos, n.Tok.String(), n.Tok)
+		return elmts
+
+	case *ast.AssignStmt:
+		elmts = appendExprs(elmts, parent, n.Lhs)
+		elmts = appendToken(elmts, parent, n.TokPos, n.Tok.String(), n.Tok)
+		elmts = appendExprs(elmts, parent, n.Rhs)
+		return elmts
+
+	case *ast.GoStmt:
+		elmts = appendToken(elmts, parent, n.Go, "go", token.GO)
+		elmts = appendElement(elmts, parent, n.Call)
+		return elmts
+
+	case *ast.DeferStmt:
+		elmts = appendToken(elmts, parent, n.Defer, "defer", token.DEFER)
+		elmts = appendElement(elmts, parent, n.Call)
+		return elmts
+
+	case *ast.ReturnStmt:
+		elmts = appendToken(elmts, parent, n.Return, "return", token.RETURN)
+		elmts = appendExprs(elmts, parent, n.Results)
+		return elmts
+
+	case *ast.BranchStmt:
+		elmts = appendToken(elmts, parent, n.TokPos, n.Tok.String(), n.Tok)
+		elmts = appendElement(elmts, parent, n.Label)
 		return elmts
 
 	case *ast.BlockStmt:
@@ -356,9 +449,62 @@ func loadElements(parent Node, node ast.Node) []Element {
 		elmts = appendRBraceToken(elmts, parent, n.Rbrace)
 		return elmts
 
-	case *ast.ReturnStmt:
-		elmts = appendToken(elmts, parent, n.Return, "return", token.RETURN)
-		elmts = appendExprs(elmts, parent, n.Results)
+	case *ast.IfStmt:
+		elmts = appendToken(elmts, parent, n.If, token.IF.String(), token.IF)
+		elmts = appendElement(elmts, parent, n.Init)
+		elmts = appendElement(elmts, parent, n.Cond)
+		elmts = appendElement(elmts, parent, n.Body)
+		elmts = appendElement(elmts, parent, n.Else)
+		return elmts
+
+	case *ast.CaseClause:
+		elmts = appendToken(elmts, parent, n.Case, token.CASE.String(), token.CASE)
+		elmts = appendExprs(elmts, parent, n.List)
+		elmts = appendToken(elmts, parent, n.Colon, token.COLON.String(), token.COLON)
+		elmts = appendStmts(elmts, parent, n.Body)
+		return elmts
+
+	case *ast.SwitchStmt:
+		elmts = appendToken(elmts, parent, n.Switch, token.SWITCH.String(), token.SWITCH)
+		elmts = appendElement(elmts, parent, n.Init)
+		elmts = appendElement(elmts, parent, n.Tag)
+		elmts = appendElement(elmts, parent, n.Body)
+		return elmts
+
+	case *ast.TypeSwitchStmt:
+		elmts = appendToken(elmts, parent, n.Switch, token.SWITCH.String(), token.SWITCH)
+		elmts = appendElement(elmts, parent, n.Init)
+		elmts = appendElement(elmts, parent, n.Assign)
+		elmts = appendElement(elmts, parent, n.Body)
+		return elmts
+
+	case *ast.CommClause:
+		elmts = appendToken(elmts, parent, n.Case, token.CASE.String(), token.CASE)
+		elmts = appendElement(elmts, parent, n.Comm)
+		elmts = appendToken(elmts, parent, n.Colon, token.COLON.String(), token.COLON)
+		elmts = appendStmts(elmts, parent, n.Body)
+		return elmts
+
+	case *ast.SelectStmt:
+		elmts = appendToken(elmts, parent, n.Select, token.SELECT.String(), token.SELECT)
+		elmts = appendElement(elmts, parent, n.Body)
+		return elmts
+
+	case *ast.ForStmt:
+		elmts = appendToken(elmts, parent, n.For, token.FOR.String(), token.FOR)
+		elmts = appendElement(elmts, parent, n.Init)
+		elmts = appendElement(elmts, parent, n.Cond)
+		elmts = appendElement(elmts, parent, n.Post)
+		elmts = appendElement(elmts, parent, n.Body)
+		return elmts
+
+	case *ast.RangeStmt:
+		elmts = appendToken(elmts, parent, n.For, token.FOR.String(), token.FOR)
+		elmts = appendElement(elmts, parent, n.Key)
+		elmts = appendElement(elmts, parent, n.Value)
+		elmts = appendToken(elmts, parent, n.TokPos, n.Tok.String(), n.Tok)
+		elmts = appendElement(elmts, parent, n.X)
+		elmts = appendElement(elmts, parent, n.Body)
 		return elmts
 	}
 	return nil
