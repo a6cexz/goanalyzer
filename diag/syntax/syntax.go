@@ -35,9 +35,32 @@ type Token interface {
 	GetKind() token.Token
 }
 
+// Expr node
+type Expr interface {
+	Node
+	exprNode()
+}
+
+// Stmt node
+type Stmt interface {
+	Node
+	stmtNode()
+}
+
+// Decl node
+type Decl interface {
+	Node
+	declNode()
+}
+
 // FromAstNode returns node from the given ast.Node
 func FromAstNode(node ast.Node) Node {
 	return fromAstNodeAndParent(nil, node)
+}
+
+// NewElementFromAst create new syntax node element
+func NewElementFromAst(node ast.Node) Node {
+	return newElementFromAstAndParent(nil, node)
 }
 
 // IsNode returns true if element is syntax node
@@ -114,6 +137,17 @@ func (t *tokenImpl) GetKind() token.Token {
 	return t.Kind
 }
 
+func getNodeImpl(parent Node, node ast.Node) *nodeImpl {
+	if node == nil {
+		return nil
+	}
+	n := &nodeImpl{
+		Parent:  parent,
+		AstNode: node,
+	}
+	return n
+}
+
 func fromAstNodeAndParent(parent Node, node ast.Node) Node {
 	if node == nil {
 		return nil
@@ -140,9 +174,24 @@ func isNilNode(node ast.Node) bool {
 	return node == nil || reflect.ValueOf(node).IsNil()
 }
 
+func isNilNode2(node Node) bool {
+	return node == nil || reflect.ValueOf(node).IsNil()
+}
+
+func isNilToken(token Token) bool {
+	return token == nil || reflect.ValueOf(token).IsNil()
+}
+
 func appendToken(elmts []Element, parent Node, pos token.Pos, text string, kind token.Token) []Element {
 	elmt := tokenNode(parent, pos, text, kind)
 	return append(elmts, elmt)
+}
+
+func appendToken2(elmts []Element, token Token) []Element {
+	if isNilToken(token) {
+		return elmts
+	}
+	return append(elmts, token)
 }
 
 func appendLParenToken(elmts []Element, parent Node, pos token.Pos) []Element {
@@ -177,6 +226,13 @@ func appendElement(elmts []Element, parent Node, node ast.Node) []Element {
 	return append(elmts, elmt)
 }
 
+func appendElement2(elmts []Element, node Node) []Element {
+	if isNilNode2(node) {
+		return elmts
+	}
+	return append(elmts, node)
+}
+
 func appendIdents(elmts []Element, parent Node, idents []*ast.Ident) []Element {
 	if idents == nil {
 		return elmts
@@ -187,12 +243,32 @@ func appendIdents(elmts []Element, parent Node, idents []*ast.Ident) []Element {
 	return elmts
 }
 
+func appendIdents2(elmts []Element, idents []*Ident) []Element {
+	if idents == nil {
+		return elmts
+	}
+	for _, ident := range idents {
+		elmts = appendElement2(elmts, ident)
+	}
+	return elmts
+}
+
 func appendComments(elmts []Element, parent Node, comments []*ast.Comment) []Element {
 	if comments == nil {
 		return elmts
 	}
 	for _, c := range comments {
 		elmts = appendElement(elmts, parent, c)
+	}
+	return elmts
+}
+
+func appendComments2(elmts []Element, comments []*Comment) []Element {
+	if comments == nil {
+		return elmts
+	}
+	for _, c := range comments {
+		elmts = append(elmts, c)
 	}
 	return elmts
 }
@@ -225,6 +301,64 @@ func appendExprs(elmts []Element, parent Node, exprs []ast.Expr) []Element {
 		elmts = appendElement(elmts, parent, e)
 	}
 	return elmts
+}
+
+func newExprFromAstAndParent(parent Node, expr ast.Expr) Expr {
+	elmt := newElementFromAstAndParent(parent, expr)
+	if expr, ok := elmt.(Expr); ok {
+		return expr
+	}
+	return nil
+}
+
+func newElementFromAstAndParent(parent Node, node ast.Node) Node {
+	switch n := node.(type) {
+	case *ast.Comment:
+		return newComment(parent, n)
+
+	case *ast.CommentGroup:
+		return newCommentGroup(parent, n)
+
+	case *ast.Field:
+		return newField(parent, n)
+
+	case *ast.Ident:
+		return newIdent(parent, n)
+
+	case *ast.BasicLit:
+		return newBasicLit(parent, n)
+	}
+	return nil
+}
+
+func getElements(node Node) []Element {
+	elmts := []Element{}
+
+	switch n := node.(type) {
+	case *Comment:
+		return nil
+
+	case *CommentGroup:
+		elmts = appendComments2(elmts, n.List)
+		return elmts
+
+	case *Field:
+		elmts = appendElement2(elmts, n.Doc)
+		elmts = appendIdents2(elmts, n.Names)
+		elmts = appendElement2(elmts, n.Type)
+		elmts = appendElement2(elmts, n.Tag)
+		elmts = appendElement2(elmts, n.Comment)
+		return elmts
+
+	case *Ident:
+		elmts = appendToken2(elmts, n.NameToken)
+		return elmts
+
+	case *BasicLit:
+		elmts = appendToken2(elmts, n.ValueToken)
+		return elmts
+	}
+	return nil
 }
 
 func loadElements(parent Node, node ast.Node) []Element {
@@ -505,6 +639,13 @@ func loadElements(parent Node, node ast.Node) []Element {
 		elmts = appendToken(elmts, parent, n.TokPos, n.Tok.String(), n.Tok)
 		elmts = appendElement(elmts, parent, n.X)
 		elmts = appendElement(elmts, parent, n.Body)
+		return elmts
+
+	case *ast.ImportSpec:
+		elmts = appendElement(elmts, parent, n.Doc)
+		elmts = appendElement(elmts, parent, n.Name)
+		elmts = appendElement(elmts, parent, n.Path)
+		elmts = appendElement(elmts, parent, n.Comment)
 		return elmts
 	}
 	return nil

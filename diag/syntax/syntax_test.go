@@ -22,6 +22,18 @@ func checkSyntaxTree(t *testing.T, expected string, node ast.Node) {
 	assert.Equal(t, expected, str)
 }
 
+func printSyntaxTree2(node ast.Node) {
+	elmt := syntax.NewElementFromAst(node)
+	syntax.Print(elmt)
+}
+func checkSyntaxTree2(t *testing.T, expected string, node ast.Node) {
+	elmt := syntax.NewElementFromAst(node)
+	var buffer bytes.Buffer
+	syntax.PrintTo(&buffer, elmt)
+	str := buffer.String()
+	assert.Equal(t, expected, str)
+}
+
 func getComment(text string) *ast.Comment {
 	c := &ast.Comment{
 		Slash: token.Pos(1),
@@ -101,93 +113,6 @@ func getBasicLit(kind token.Token, value string) *ast.BasicLit {
 		Value:    value,
 	}
 	return r
-}
-
-func TestCommentGroupNode(t *testing.T) {
-	commentGroup := getCommentGroup("Test1", "Test2")
-
-	elmt := syntax.FromAstNode(commentGroup)
-	assert.NotNil(t, elmt)
-	assert.True(t, commentGroup == elmt.GetAstNode())
-	assert.Nil(t, elmt.GetParent())
-
-	elmts := elmt.GetElements()
-	assert.NotNil(t, elmts)
-	assert.Equal(t, 2, len(elmts))
-
-	parent := elmts[0].GetParent()
-	assert.True(t, parent == elmt)
-
-	e := `node *ast.CommentGroup
-parent <nil>
-elmnts: [
-	node *ast.Comment
-	parent *ast.CommentGroup
-	elmnts: []
-
-	node *ast.Comment
-	parent *ast.CommentGroup
-	elmnts: []
-]
-`
-	checkSyntaxTree(t, e, commentGroup)
-}
-
-func TestFieldNode(t *testing.T) {
-	e := `node *ast.Field
-parent <nil>
-elmnts: [
-	node *ast.CommentGroup
-	parent *ast.Field
-	elmnts: [
-		node *ast.Comment
-		parent *ast.CommentGroup
-		elmnts: []
-	]
-
-	node *ast.Ident
-	parent *ast.Field
-	elmnts: [
-		token a IDENT
-	]
-
-	node *ast.Ident
-	parent *ast.Field
-	elmnts: [
-		token b IDENT
-	]
-
-	node *ast.Ident
-	parent *ast.Field
-	elmnts: [
-		token int IDENT
-	]
-
-	node *ast.BasicLit
-	parent *ast.Field
-	elmnts: [
-		token lit STRING
-	]
-
-	node *ast.CommentGroup
-	parent *ast.Field
-	elmnts: [
-		node *ast.Comment
-		parent *ast.CommentGroup
-		elmnts: []
-	]
-]
-`
-
-	doc := getCommentGroup("test")
-	f := &ast.Field{
-		Doc:     doc,
-		Names:   getIdents("a", "b"),
-		Type:    getIdent("int"),
-		Tag:     getBasicLit(token.STRING, "lit"),
-		Comment: getCommentGroup("line"),
-	}
-	checkSyntaxTree(t, e, f)
 }
 
 func TestFieldListNode(t *testing.T) {
@@ -1498,6 +1423,49 @@ elmnts: [
 		Tok:    token.DEFINE,
 		X:      getIdent("x"),
 		Body:   &ast.BlockStmt{},
+	}
+	checkSyntaxTree(t, e, n)
+}
+
+func TestImportSpecNode(t *testing.T) {
+	e := `node *ast.ImportSpec
+parent <nil>
+elmnts: [
+	node *ast.CommentGroup
+	parent *ast.ImportSpec
+	elmnts: [
+		node *ast.Comment
+		parent *ast.CommentGroup
+		elmnts: []
+	]
+
+	node *ast.Ident
+	parent *ast.ImportSpec
+	elmnts: [
+		token id IDENT
+	]
+
+	node *ast.BasicLit
+	parent *ast.ImportSpec
+	elmnts: [
+		token path STRING
+	]
+
+	node *ast.CommentGroup
+	parent *ast.ImportSpec
+	elmnts: [
+		node *ast.Comment
+		parent *ast.CommentGroup
+		elmnts: []
+	]
+]
+`
+	n := &ast.ImportSpec{
+		Doc:     getCommentGroup("c"),
+		Name:    getIdent("id"),
+		Path:    getBasicLit(token.STRING, "path"),
+		Comment: getCommentGroup("c2"),
+		EndPos:  token.Pos(1),
 	}
 	checkSyntaxTree(t, e, n)
 }
