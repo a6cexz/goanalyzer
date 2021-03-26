@@ -8,6 +8,9 @@ type Comment struct {
 }
 
 func newComment(parent Node, node *ast.Comment) *Comment {
+	if node == nil {
+		return nil
+	}
 	r := &Comment{}
 	r.nodeImpl = getNodeImpl(parent, node)
 	return r
@@ -32,6 +35,9 @@ type CommentGroup struct {
 }
 
 func newCommentGroup(parent Node, node *ast.CommentGroup) *CommentGroup {
+	if node == nil {
+		return nil
+	}
 	r := &CommentGroup{}
 	r.nodeImpl = getNodeImpl(parent, node)
 	r.List = newComments(r, node.List)

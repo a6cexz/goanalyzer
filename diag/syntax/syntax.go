@@ -160,6 +160,20 @@ func fromAstNodeAndParent(parent Node, node ast.Node) Node {
 	return n
 }
 
+func newTokenByKind(parent Node, pos token.Pos, kind token.Token) Token {
+	text := kind.String()
+	return newToken(parent, pos, text, kind)
+}
+
+func newToken(parent Node, pos token.Pos, text string, kind token.Token) Token {
+	r := &tokenImpl{}
+	r.Parent = parent
+	r.Pos = pos
+	r.Text = text
+	r.Kind = kind
+	return r
+}
+
 func tokenNode(parent Node, pos token.Pos, text string, kind token.Token) Token {
 	t := &tokenImpl{
 		Parent: parent,
@@ -283,12 +297,32 @@ func appendFields(elmts []Element, parent Node, fields []*ast.Field) []Element {
 	return elmts
 }
 
+func appendFields2(elmts []Element, fields []*Field) []Element {
+	if fields == nil {
+		return elmts
+	}
+	for _, field := range fields {
+		elmts = appendElement2(elmts, field)
+	}
+	return elmts
+}
+
 func appendStmts(elmts []Element, parent Node, stmts []ast.Stmt) []Element {
 	if stmts == nil {
 		return elmts
 	}
 	for _, s := range stmts {
 		elmts = appendElement(elmts, parent, s)
+	}
+	return elmts
+}
+
+func appendStmts2(elmts []Element, stmts []Stmt) []Element {
+	if stmts == nil {
+		return elmts
+	}
+	for _, s := range stmts {
+		elmts = append(elmts, s)
 	}
 	return elmts
 }
@@ -303,10 +337,28 @@ func appendExprs(elmts []Element, parent Node, exprs []ast.Expr) []Element {
 	return elmts
 }
 
+func appendExprs2(elmts []Element, exprs []Expr) []Element {
+	if exprs == nil {
+		return elmts
+	}
+	for _, e := range exprs {
+		elmts = append(elmts, e)
+	}
+	return elmts
+}
+
 func newExprFromAstAndParent(parent Node, expr ast.Expr) Expr {
 	elmt := newElementFromAstAndParent(parent, expr)
-	if expr, ok := elmt.(Expr); ok {
-		return expr
+	if result, ok := elmt.(Expr); ok {
+		return result
+	}
+	return nil
+}
+
+func newStmtFromAstAndParent(parent Node, stmt ast.Stmt) Stmt {
+	elmt := newElementFromAstAndParent(parent, stmt)
+	if result, ok := elmt.(Stmt); ok {
+		return result
 	}
 	return nil
 }
@@ -322,11 +374,32 @@ func newElementFromAstAndParent(parent Node, node ast.Node) Node {
 	case *ast.Field:
 		return newField(parent, n)
 
+	case *ast.FieldList:
+		return newFieldList(parent, n)
+
+	case *ast.BadExpr:
+		return newBadExpr(parent, n)
+
 	case *ast.Ident:
 		return newIdent(parent, n)
 
+	case *ast.Ellipsis:
+		return newEllipsis(parent, n)
+
 	case *ast.BasicLit:
 		return newBasicLit(parent, n)
+
+	case *ast.FuncLit:
+		return newFuncLit(parent, n)
+
+	case *ast.FuncType:
+		return newFuncType(parent, n)
+
+	case *ast.BlockStmt:
+		return newBlockStmt(parent, n)
+
+	case *ast.ReturnStmt:
+		return newReturnStmt(parent, n)
 	}
 	return nil
 }
@@ -350,12 +423,48 @@ func getElements(node Node) []Element {
 		elmts = appendElement2(elmts, n.Comment)
 		return elmts
 
+	case *FieldList:
+		elmts = appendToken2(elmts, n.Opening)
+		elmts = appendFields2(elmts, n.List)
+		elmts = appendToken2(elmts, n.Closing)
+		return elmts
+
+	case *BadExpr:
+		return nil
+
 	case *Ident:
 		elmts = appendToken2(elmts, n.NameToken)
 		return elmts
 
+	case *Ellipsis:
+		elmts = appendToken2(elmts, n.EllipsisToken)
+		elmts = appendElement2(elmts, n.Elt)
+		return elmts
+
 	case *BasicLit:
 		elmts = appendToken2(elmts, n.ValueToken)
+		return elmts
+
+	case *FuncLit:
+		elmts = appendElement2(elmts, n.Type)
+		elmts = appendElement2(elmts, n.Body)
+		return elmts
+
+	case *FuncType:
+		elmts = appendToken2(elmts, n.FuncToken)
+		elmts = appendElement2(elmts, n.Params)
+		elmts = appendElement2(elmts, n.Results)
+		return elmts
+
+	case *BlockStmt:
+		elmts = appendToken2(elmts, n.LbraceToken)
+		elmts = appendStmts2(elmts, n.List)
+		elmts = appendToken2(elmts, n.RbraceToken)
+		return elmts
+
+	case *ReturnStmt:
+		elmts = appendToken2(elmts, n.ReturnToken)
+		elmts = appendExprs2(elmts, n.Results)
 		return elmts
 	}
 	return nil

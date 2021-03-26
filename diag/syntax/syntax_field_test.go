@@ -62,3 +62,41 @@ elmnts: [
 	}
 	checkSyntaxTree2(t, e, f)
 }
+
+func TestFieldListNode(t *testing.T) {
+	e := `node *ast.FieldList
+parent <nil>
+elmnts: [
+	token ( (
+
+	node *ast.Field
+	parent *ast.FieldList
+	elmnts: [
+		node *ast.Ident
+		parent *ast.Field
+		elmnts: [
+			token a IDENT
+		]
+	
+		node *ast.Ident
+		parent *ast.Field
+		elmnts: [
+			token int IDENT
+		]
+	]
+
+	token ) )
+]
+`
+
+	f := &ast.Field{
+		Names: getIdents("a"),
+		Type:  getIdent("int"),
+	}
+	fieldList := &ast.FieldList{
+		Opening: token.Pos(1),
+		List:    []*ast.Field{f},
+		Closing: token.Pos(2),
+	}
+	checkSyntaxTree2(t, e, fieldList)
+}

@@ -16,6 +16,9 @@ type Field struct {
 }
 
 func newField(parent Node, node *ast.Field) *Field {
+	if node == nil {
+		return nil
+	}
 	r := &Field{}
 	r.nodeImpl = getNodeImpl(parent, node)
 	r.Doc = newCommentGroup(r, node.Doc)
@@ -27,55 +30,35 @@ func newField(parent Node, node *ast.Field) *Field {
 	return r
 }
 
-// Ident node
-type Ident struct {
-	*nodeImpl
-	NameToken Token
-}
-
-func (*Ident) exprNode() {}
-
-func newToken(parent Node, pos token.Pos, text string, kind token.Token) Token {
-	r := &tokenImpl{}
-	r.Parent = parent
-	r.Pos = pos
-	r.Text = text
-	r.Kind = kind
-	return r
-}
-
-func newIdent(parent Node, node *ast.Ident) *Ident {
-	r := &Ident{}
-	r.nodeImpl = getNodeImpl(parent, node)
-	r.NameToken = newToken(r, node.NamePos, node.Name, token.IDENT)
-	r.Elements = getElements(r)
-	return r
-}
-
-func newIdents(parent Node, nodes []*ast.Ident) []*Ident {
+func newFields(parent Node, nodes []*ast.Field) []*Field {
 	if nodes == nil {
 		return nil
 	}
-	idents := []*Ident{}
+	fields := []*Field{}
 	for _, node := range nodes {
-		ident := newIdent(parent, node)
-		idents = append(idents, ident)
+		field := newField(parent, node)
+		fields = append(fields, field)
 	}
-	return idents
+	return fields
 }
 
-// BasicLit node
-type BasicLit struct {
+// FieldList node
+type FieldList struct {
 	*nodeImpl
-	ValueToken Token
+	Opening Token
+	List    []*Field
+	Closing Token
 }
 
-func (*BasicLit) exprNode() {}
-
-func newBasicLit(parent Node, node *ast.BasicLit) *BasicLit {
-	r := &BasicLit{}
+func newFieldList(parent Node, node *ast.FieldList) *FieldList {
+	if node == nil {
+		return nil
+	}
+	r := &FieldList{}
 	r.nodeImpl = getNodeImpl(parent, node)
-	r.ValueToken = newToken(r, node.ValuePos, node.Value, node.Kind)
+	r.Opening = newTokenByKind(r, node.Opening, token.LPAREN)
+	r.List = newFields(r, node.List)
+	r.Closing = newTokenByKind(r, node.Closing, token.RPAREN)
 	r.Elements = getElements(r)
 	return r
 }
